@@ -3,14 +3,29 @@ import useTodoList from "../hooks/useTodoList";
 import { TodoContext } from "../contexts/TodoContext";
 
 export function TodoProvider({ children }: { children: ReactNode }) {
-  const [todos, addItem, deleteItem, modifyItem] = useTodoList();
+  const [
+    todos,
+    addItem,
+    deleteItem,
+    modifyItem,
+    reorderItems,
+    pinnedItems,
+    pinItem,
+    unpinItem,
+    nonPinnedItems,
+  ] = useTodoList();
 
   const value = {
     todos,
     addItem,
     deleteItem,
     modifyItem,
+    reorderItems,
+    pinnedItems,
+    pinItem,
+    unpinItem,
+    nonPinnedItems,
   };
 
-  return <TodoContext value={value}>{children}</TodoContext>;
+  return <TodoContext.Provider value={value}>{children}</TodoContext.Provider>;
 }

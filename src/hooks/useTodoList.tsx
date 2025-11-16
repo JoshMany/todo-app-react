@@ -44,7 +44,7 @@ import type { List, ListItem } from "../types/list";
  *
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage MDN localStorage documentation}
  *
- * @augments useState
+ * @augments useState<List>
  */
 function useTodoList() {
   const [storedValue, setStoredValue] = useState<List>(() => {
@@ -59,13 +59,18 @@ function useTodoList() {
     }
   });
 
+  const pinnedItems = storedValue.items.filter((item) => item.pinned);
+  const nonPinnedItems = storedValue.items.filter((item) => !item.pinned);
+
   const addItem = (
     value: Pick<ListItem, "title" | "content" | "completed">
   ) => {
     const structuredValue = {
       ...value,
+      uuid: crypto.randomUUID(),
       createdAt: new Date(),
       updatedAt: new Date(),
+      pinned: false,
     };
     const newList = {
       ...storedValue,
@@ -75,27 +80,79 @@ function useTodoList() {
     window.localStorage.setItem("todos", JSON.stringify(newList));
   };
 
-  const deleteItem = (index: number) => {
+  const deleteItem = (uuid: string) => {
     const newList = {
       ...storedValue,
-      items: storedValue.items.filter((_, i) => i !== index),
+      items: storedValue.items.filter((item) => item.uuid !== uuid),
     };
     setStoredValue(newList);
     window.localStorage.setItem("todos", JSON.stringify(newList));
   };
 
-  const modifyItem = (index: number, updatedValue: Partial<ListItem>) => {
+  const modifyItem = (uuid: string, updatedValue: Partial<ListItem>) => {
     const newList = {
       ...storedValue,
-      items: storedValue.items.map((item, i) =>
-        i === index ? { ...item, ...updatedValue } : item
+      items: storedValue.items.map((item) =>
+        item.uuid === uuid ? { ...item, ...updatedValue } : item
       ),
     };
     setStoredValue(newList);
     window.localStorage.setItem("todos", JSON.stringify(newList));
   };
 
-  return [storedValue, addItem, deleteItem, modifyItem] as const;
+  const reorderItems = (
+    reorderMethod: "fromIndex" | "fromUUID",
+    from: number | string,
+    to: number | string
+  ) => {
+    const newItems = [...storedValue.items];
+    const fromIndex =
+      typeof from === "number"
+        ? from
+        : newItems.findIndex((item) => item.uuid === from);
+    const toIndex =
+      typeof to === "number"
+        ? to
+        : newItems.findIndex((item) => item.uuid === to);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    if (reorderMethod === "fromIndex") {
+      const [removed] = newItems.splice(fromIndex, 1);
+      newItems.splice(toIndex, 0, removed);
+    } else {
+      const [removed] = newItems.splice(fromIndex, 1);
+      newItems.splice(toIndex, 0, removed);
+    }
+
+    const newList = {
+      ...storedValue,
+      items: newItems,
+      updatedAt: new Date(),
+    };
+
+    setStoredValue(newList);
+    window.localStorage.setItem("todos", JSON.stringify(newList));
+  };
+
+  const pinItem = (uuid: string) => {
+    modifyItem(uuid, { pinned: true });
+  };
+
+  const unpinItem = (uuid: string) => {
+    modifyItem(uuid, { pinned: false });
+  };
+
+  return [
+    storedValue,
+    addItem,
+    deleteItem,
+    modifyItem,
+    reorderItems,
+    pinnedItems,
+    pinItem,
+    unpinItem,
+    nonPinnedItems,
+  ] as const;
 }
 
 export default useTodoList;
